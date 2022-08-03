@@ -21,10 +21,10 @@ lift_deadband = 0.1
 class TextPrint(object):
     def __init__(self):
         self.reset()
-        self.font = pygame.font.Font(None, 20)
+        self.font = pygame.font.Font("freesansbold.ttf", 14)
 
     def tprint(self, screen, textString):
-        textBitmap = self.font.render(textString, True, BLACK)
+        textBitmap = self.font.render(textString, True, WHITE)
         screen.blit(textBitmap, (self.x, self.y))
         self.y += self.line_height
 
@@ -65,14 +65,30 @@ def translate_speed(fwd, turn):
 
 def on_camera_image(cli, new_im):
     """ Handle new images, coming from the robot. """
-        del cli
-    cozmo_image = np.array(new_im)[:, :, ::-1].copy()
+    del cli
+    cozmo_image = get_pygame_image(new_im)
+
+
+def get_pygame_image(cv2Image):
+    #cv2Image = self.last_im.copy()
+    if cv2Image.dtype.name == 'uint16':
+        cv2Image = (cv2Image / 256).astype('uint8')
+    size = cv2Image.shape[1::-1]
+    if len(cv2Image.shape) == 2:
+        cv2Image = np.repeat(cv2Image.reshape(size[1], size[0], 1), 3, axis = 2)
+        format = 'RGB'
+    else:
+        format = 'RGBA' if cv2Image.shape[2] == 4 else 'RGB'
+        cv2Image[:, :, [0, 2]] = cv2Image[:, :, [2, 0]]
+    surface = pygame.image.frombuffer(cv2Image.flatten(), size, format)
+    return surface.convert_alpha() if format == 'RGBA' else surface.convert()
+
 
 def main(run_cozmo = True):
     pygame.init()
-    pygame.joystick.init()
     # Set the width and height of the screen (width, height).
     screen = pygame.display.set_mode((320, 240))
+    cozmo_image = get_pygame_image(np.zeros((240,320,3), np.uint8))
     pygame.display.set_caption("Cozmo Drive")
     # Loop until the user clicks the close button.
     done = False
@@ -112,6 +128,13 @@ def main(run_cozmo = True):
             screen.fill(WHITE)
             textPrint.reset()
             screen.blit(cozmo_image, (0, 0)) 
+            textPrint.tprint(screen,"Num joysticks is {}".format(pygame.joystick.get_count()))
+            
+            # Blah blah, initialize joysticks
+            for i in range(pygame.joystick.get_count()):
+                joystick = pygame.joystick.Joystick(i)
+                joystick.init()
+
 
             for event in pygame.event.get(): # User did something.
                 if event.type == pygame.QUIT: # If user clicked close.
@@ -120,7 +143,7 @@ def main(run_cozmo = True):
                     textPrint.tprint(screen, "Joystick button {} pressed.".format(event.button))
                     if event.button < 4:
                         expression = event.button
-                    elif event.button == 9 or event.button == 10:
+                    elif event.button == 4 or event.button == 5:
                         make_sound = True
                 elif event.type == pygame.JOYBUTTONUP:
                     textPrint.tprint(screen, "Joystick button {} released.".format(event.button))
@@ -143,84 +166,54 @@ def main(run_cozmo = True):
                         else:
                             head_speed = event.value * max_head_speed
                     elif event.axis == 3:
-                        if -lift_deadband < event.value < life_deadband:
+                        if -lift_deadband < event.value < lift_deadband:
                             lift_speed = 0.0
                         else:
                             lift_speed = event.value * max_lift_speed
 
 
-                if(run_cozmo):
-                    # Move head
-                    cli.move_head(head_speed)
-                    # Move arm
-                    cli.move_lift(lift_speed)
-                    # Run expression
-                    if expression == 0:
-                        # happy face
-                        expression = -1
-                    elif expression == 1:
-                        #angry face
-                        expression = -1
-                    elif expression == 2:
-                        # sad face
-                        expression = -1
-                    elif expression == 3:
-                        # rando face
-                        expression = -1
-                    # Make sound
-                    if make_sound:
-                        make_sound = False
-                        #cli.play_audio("boopboop.wav")
-                    # Translate x-y speed to left wheel, right wheel speed
-                    #lwheel, rwheel = translate_speed(cozmo_speed)
-                    cli.drive_wheels(translate_speed(forward_speed,turn_speed))
+            if(run_cozmo):
+                # Move head
+                cli.move_head(head_speed)
+                # Move arm
+                cli.move_lift(lift_speed)
+                # Run expression
+                if expression == 0:
+                    # happy face
+                    expression = -1
+                elif expression == 1:
+                    #angry face
+                    expression = -1
+                elif expression == 2:
+                    # sad face
+                    expression = -1
+                elif expression == 3:
+                    # rando face
+                    expression = -1
+                # Make sound
+                if make_sound:
+                    make_sound = False
+                    #cli.play_audio("boopboop.wav")
+                # Translate x-y speed to left wheel, right wheel speed
+                #lwheel, rwheel = translate_speed(cozmo_speed)
+                cli.drive_wheels(translate_speed(forward_speed,turn_speed))
 
 
-
-            # # Get count of joysticks.
-            # joystick_count = pygame.joystick.get_count()
-
-            # # For each joystick:
-            # for i in range(joystick_count):
-            #     joystick = pygame.joystick.Joystick(i)
-            #     joystick.init()
-
-            #     textPrint.tprint(screen, "Joystick {}".format(i))
-            #     textPrint.indent()
-
-            #     # for i in range(axes):
-            #         # axis = joystick.get_axis(i)
-            #         # textPrint.tprint(screen, "Axis {} value: {:>6.3f}".format(i, axis))
-            #     # textPrint.unindent()
-
-            #     axis0 = joystick.get_axis(0)
-
-            #     textPrint.tprint(screen, "Axis {} value: {:>6.3f}".format(0, axis0))
-
-            #     axis1 = joystick.get_axis(1)
-            #     textPrint.tprint(screen, "Axis {} value: {:>6.3f}".format(1, axis1))
-
-            #     axis2 = joystick.get_axis(2)
-            #     textPrint.tprint(screen, "Axis {} value: {:>6.3f}".format(2, axis2))
-
-            #     axis3 = joystick.get_axis(3)
-            #     textPrint.tprint(screen, "Axis {} value: {:>6.3f}".format(3, axis3))
-
-            # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
-            #
-            # Go ahead and update the screen with what we've drawn.
-            pygame.display.flip()
+            pygame.display.update()
             # Limit to 20 frames per second.
             clock.tick(20)
-
-    pygame.quit()
+        if(run_cozmo):
+            cli.stop_all_motors()
+            cli.disconnect()
+            cli.stop()
+    finally:
+        pygame.quit()
 
 
 
 if __name__ == "__main__":
     import sys
-    cozmo_image = np.zeros((320,240,3), np.uint8)
-    cozmo_image_updated = False
+    cozmo_image = None
     # run_event_loop(print_add, print_remove, key_received)
 
     # Get what to test

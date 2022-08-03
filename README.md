@@ -24,7 +24,6 @@ If you just want to use pycozmo as on pip.
 1. If your virtual environment is not currently active, activate it with ```source ./venv/Scripts/activate```
 2. Install pycozmo through pip with ```pip install pycozmo==0.8.0```
 
-
 ##### Adding Pycozmo from Source
 If you want to do pycozmo development it can get a bit more screamy.
 
@@ -38,44 +37,8 @@ List all functions:
 
 ``` python main.py -h```
 
-Results in:
-```
-Possible function tests are called with:
-pexressions --------------- Print all expression names
-expressions --------------- See all possible expressions and their names
-expression <option> ------- Run expression with specific name
-panims -------------------- Print all animation names
-tanim <option> ------------ Run animation with specific name
-panimgroups --------------- Print all animation group names
-tanimgroup <option> ------- Run animation group with specific name
-```
-
 ## Capabilities
 
-### Faces
-- Requires disabling standard procedural faces
-- Full list just pulled form pycozmo examples
-
-### Animations
-- Base animations from flat stack. Looks like there are complete animations, and then components of those complete animations.
-- ~~The names don't seem to line up with the names from the cozmo SDK. So answer hazy which animations are which~~
-- The named animations from the sdk are the animation groups, and are themselves compound animations
-- Can make compount animations with functions and animation groups, mostly same commands
-- Could likely make interruptable routines of python commands for interruptable compound action sets
-
-### Event Handling
-Currently get handling for:
-
-- On Robot Picked Up
-- On Robot Orientation Change (is it put on its back or side or anything)
-- On Cliff Detected
-- On Charging State Change
-- On robot poked???? -> Is this petting cozmo or something?
-- Get robot state data packet -> currently only reading the battery level out of it
-
-### Need to test
-- ~~ability to interrupt animations~~ -> not tested, but seems feasible
-- Event handling of animation events
 
 ## References
 1. [PyCozmo](https://github.com/zayfod/pycozmo)
