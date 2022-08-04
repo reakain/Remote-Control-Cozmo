@@ -67,7 +67,9 @@ def translate_speed(fwd, turn):
     return float(left_wheel_speed), float(right_wheel_speed)
     
 
-
+# Event handler for getting the camera image from cozmo.
+# Saves the image as a np.array in the global cozmo_image
+# variable.
 def on_camera_image(cli, new_im):
     """ Handle new images, coming from the robot. """
     del cli
@@ -75,12 +77,15 @@ def on_camera_image(cli, new_im):
     cozmo_image = np.array(new_im)
 
 
+# Main run function. Includes options for running without a
+# cozmo, as well as adding additional debug text. The function
+# includes our main pygame loop and cozmo setup and connecting.
 def main(run_cozmo = True, use_debug = False):
     global cozmo_image
+    ### ------ Pygame Initialization ------
     pygame.init()
     # Set the width and height of the screen (width, height).
     screen = pygame.display.set_mode((320, 240))
-    
     pygame.display.set_caption("Cozmo Drive")
     # Loop until the user clicks the close button.
     done = False
@@ -95,6 +100,7 @@ def main(run_cozmo = True, use_debug = False):
         pygame.display.update()
 
     try:
+        ### ------ Cozmo Initialization ------
         cli = None
         if(run_cozmo):
             if(use_debug):
@@ -124,6 +130,7 @@ def main(run_cozmo = True, use_debug = False):
 
         # -------- Main Program Loop -----------
         while not done:
+            # Initialize the canvas and draw the cozmo camera image
             screen.fill(WHITE)
             textPrint.reset()
             pygame.surfarray.blit_array(screen,np.rot90(cozmo_image)) 
@@ -134,6 +141,7 @@ def main(run_cozmo = True, use_debug = False):
                 joystick = pygame.joystick.Joystick(i)
                 joystick.init()
 
+            # Get all our user inputs
             for event in pygame.event.get(): # User did something.
                 if event.type == pygame.QUIT: # If user clicked close.
                     done = True # Flag that we are done so we exit this loop.
@@ -173,7 +181,7 @@ def main(run_cozmo = True, use_debug = False):
                         else:
                             lift_speed = -event.value * max_lift_speed
 
-
+            ### All our Cozmo control calls based on the user inputs
             if(run_cozmo):
                 # Move head
                 cli.move_head(head_speed)
@@ -210,6 +218,8 @@ def main(run_cozmo = True, use_debug = False):
             pygame.display.update()
             # Limit to 20 frames per second.
             clock.tick(20)
+
+        # Clean close out stuff
         if(run_cozmo):
             cli.stop_all_motors()
             cli.disconnect()
@@ -221,19 +231,18 @@ def main(run_cozmo = True, use_debug = False):
 
 if __name__ == "__main__":
     import sys
-    #cozmo_image = None
-    # run_event_loop(print_add, print_remove, key_received)
+
     run_cozmo = True
     use_debug = False
     print_help = False
 
-    # Get what to test
+    # Get our run arguments
     if len(sys.argv) >= 2:
         commands = sys.argv[1:len(sys.argv)-1]
     else:
         commands = [""]
-        #command = str(sys.argv[1])
     
+    # Change our running paraments based on those commands
     for arg in commands:
         if str(arg) == "nocozmo":
             run_cozmo = False
@@ -243,6 +252,7 @@ if __name__ == "__main__":
              str(arg) == "--h" or str(arg) == "?":
             print_help = True
 
+    # Print help text or run the program.
     if print_help:
         print("This program allows for joystick control of a Cozmo robot.")
         print("It displays the robot camera feed if available and allows for")
