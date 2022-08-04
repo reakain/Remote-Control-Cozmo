@@ -8,7 +8,7 @@ import numpy as np
 BLACK = pygame.Color('black')
 WHITE = pygame.Color('white')
 
-# Define some constants
+# Define some constants for joystick deadbands and max speeds
 max_wheel_speed = 150.0
 max_head_speed = 3.0
 max_lift_speed = 5.0
@@ -16,6 +16,7 @@ wheel_deadband = 0.1
 head_deadband = 0.05
 lift_deadband = 0.05
 
+# Initialize our cozmo image
 cozmo_image = np.zeros((240,320,3), np.uint8)
 
 # This is a simple class that will help us print to the screen.
@@ -43,17 +44,28 @@ class TextPrint(object):
         self.x -= 10
 
 
+# This takes a forward speed of -1.0 to 1.0 and a rotation/turning 
+# speed of -1.0 to 1.0. It returns left wheel and right wheel (in 
+# that order) speeds that are range -max_wheel_speed to max_wheel_speed
+# The return values are converted from double to float to match
+# what the pycozmo drive_wheels command exprects.
 def translate_speed(fwd, turn):
     if fwd == 0.0 and turn == 0.0:
-        return 0.0, 0.0
+        left_wheel_speed = 0.0
+        right_wheel_speed = 0.0
     elif fwd == 0.0:
-        return turn*max_wheel_speed, -turn*max_wheel_speed
+        left_wheel_speed = turn*max_wheel_speed
+        right_wheel_speed = -turn*max_wheel_speed
     elif turn == 0.0:
-        return fwd*max_wheel_speed, fwd*max_wheel_speed
+        left_wheel_speed = fwd*max_wheel_speed
+        right_wheel_speed = fwd*max_wheel_speed
     else:
         avg_speed = fwd*max_wheel_speed
         turn_speed = turn*max_wheel_speed/2
-        return avg_speed + turn_speed, avg_speed - turn_speed
+        left_wheel_speed = avg_speed + turn_speed
+        right_wheel_speed = avg_speed - turn_speed
+    return float(left_wheel_speed), float(right_wheel_speed)
+    
 
 
 def on_camera_image(cli, new_im):
@@ -63,7 +75,7 @@ def on_camera_image(cli, new_im):
     cozmo_image = np.array(new_im)
 
 
-def main(run_cozmo = True):
+def main(run_cozmo = True, use_debug = False):
     global cozmo_image
     pygame.init()
     # Set the width and height of the screen (width, height).
@@ -78,10 +90,16 @@ def main(run_cozmo = True):
     pygame.joystick.init()
     # Get ready to print.
     textPrint = TextPrint()
+    if(use_debug):
+        textPrint.tprint(screen, "Starting system!")
+        pygame.display.update()
 
     try:
         cli = None
         if(run_cozmo):
+            if(use_debug):
+                textPrint.tprint(screen, "Connecting to Cozmo...")
+                pygame.display.update()
             # Connect to cozmo
             cli = pycozmo.client.Client(
             protocol_log_messages=None,
@@ -110,28 +128,30 @@ def main(run_cozmo = True):
             textPrint.reset()
             pygame.surfarray.blit_array(screen,np.rot90(cozmo_image)) 
                        
-            # Blah blah, initialize joysticks
+            # Initializing our joysticks every time so we can get the values in the event queue
+            # and handle hot swapping
             for i in range(pygame.joystick.get_count()):
                 joystick = pygame.joystick.Joystick(i)
                 joystick.init()
-
 
             for event in pygame.event.get(): # User did something.
                 if event.type == pygame.QUIT: # If user clicked close.
                     done = True # Flag that we are done so we exit this loop.
                 elif event.type == pygame.JOYBUTTONDOWN:
-                    #textPrint.tprint(screen, "Joystick button {} pressed.".format(event.button))
+                    if(use_debug):
+                        textPrint.tprint(screen, "Joystick button {} pressed.".format(event.button))
                     if event.button < 4:
                         expression = event.button
                     elif event.button == 4 or event.button == 5:
                         make_sound = True
                     elif event.button == 7:
                         done = True
-                #elif event.type == pygame.JOYBUTTONUP:
-                    #textPrint.tprint(screen, "Joystick button {} released.".format(event.button))
+                elif event.type == pygame.JOYBUTTONUP:
+                    if(use_debug):
+                        textPrint.tprint(screen, "Joystick button {} released.".format(event.button))
                 elif event.type == pygame.JOYAXISMOTION:
-                    #event.axis, event.value, joystick
-                    #textPrint.tprint(screen, "Axis {} value: {:>6.3f}".format(event.axis, event.value))
+                    if(use_debug):
+                        textPrint.tprint(screen, "Axis {} value: {:>6.3f}".format(event.axis, event.value))
                     if event.axis == 1:
                         if -wheel_deadband < event.value < wheel_deadband:
                             forward_speed = 0.0
@@ -161,25 +181,31 @@ def main(run_cozmo = True):
                 cli.move_lift(lift_speed)
                 # Run expression
                 if expression == 0:
-                    # happy face
-                    expression = -1
+                    # TODO: client call to display happy face
+                    expression = -1     # This resets so we don't keep restarting the expression every call
                 elif expression == 1:
-                    #angry face
-                    expression = -1
+                    # TODO: client call to display angry face
+                    expression = -1     # This resets so we don't keep restarting the expression every call
                 elif expression == 2:
-                    # sad face
-                    expression = -1
+                    # TODO: client call to display sad face
+                    expression = -1     # This resets so we don't keep restarting the expression every call
                 elif expression == 3:
-                    # rando face
-                    expression = -1
+                    # TODO: client call to display random face
+                    expression = -1     # This resets so we don't keep restarting the expression every call
                 # Make sound
                 if make_sound:
-                    make_sound = False
+                    # TODO: client call to play the sound.
+                    # Should it do a grab from a couple random sounds? Currently both bumpers come to this if
                     #cli.play_audio("boopboop.wav")
+                    make_sound = False  # This resets so we don't keep restarting the audio every call
+                    
                 # Translate x-y speed to left wheel, right wheel speed
-                #lwheel, rwheel = translate_speed(cozmo_speed)
                 lwheel,rwheel = translate_speed(forward_speed,turn_speed)
-                cli.drive_wheels(float(lwheel), float(rwheel))
+                if(use_debug):
+                    textPrint.tprint(screen, "Left wheel: {}".format(lwheel))
+                    textPrint.tprint(screen, "Right wheel: {}".format(rwheel))
+                # Feed the wheel speeds to cozmo
+                cli.drive_wheels(lwheel, rwheel)
 
             pygame.display.update()
             # Limit to 20 frames per second.
@@ -197,18 +223,27 @@ if __name__ == "__main__":
     import sys
     #cozmo_image = None
     # run_event_loop(print_add, print_remove, key_received)
+    run_cozmo = True
+    use_debug = False
+    print_help = False
 
     # Get what to test
     if len(sys.argv) >= 2:
-        command = str(sys.argv[1])
+        commands = sys.argv[1:len(sys.argv)-1]
     else:
-        command = ""
+        commands = [""]
         #command = str(sys.argv[1])
     
-    if command != "nocozmo" and command != "":
-        command = "-h"
+    for arg in commands:
+        if str(arg) == "nocozmo":
+            run_cozmo = False
+        elif str(arg) == "debug" or str(arg) == "-v":
+            use_debug = True
+        elif str(arg) == "help" or str(arg) == "-h" or\
+             str(arg) == "--h" or str(arg) == "?":
+            print_help = True
 
-    if command == "-h":
+    if print_help:
         print("This program allows for joystick control of a Cozmo robot.")
         print("It displays the robot camera feed if available and allows for")
         print("wheel drive control with the left joystick, head angle control")
@@ -218,11 +253,9 @@ if __name__ == "__main__":
         print("audio can be played using the bumper triggers.")
         print("")
         print("This system can be test run without a cozmo by calling this code")
-        print("with the nocozmo command.", flush=True)
-    elif command == "nocozmo":
-        #Run as main program
-        main(False)
+        print("with the nocozmo command. This system can display debug text")
+        print("by using the debug command or -v argument.", flush=True)
     else:
-        main()
+        main(run_cozmo, use_debug)
         
         

@@ -4,4 +4,4 @@ numpy>=1.19.4
 Pillow>=8.0.1
 opencv-python>=4.6.0
 pygame>=2.1.2
-pycozmo
+pycozmo==0.8.0
