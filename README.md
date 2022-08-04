@@ -1,6 +1,6 @@
-# PyCozmo Expression Animation Testing
+# Remote Control Cozmo
 
-This serves as a quick test of the PyCozmo expression and animation capabilities.
+Made a little pygame setup with pycozmo for a remote controlled cozmo. It still needs to add in the expressions and sounds.
 
 ## Environment Setup
 This application uses Python 3, and these instructions assume python3 is set as your default python command. You can check your version with ```python --version```
