@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import pycozmo
 import pygame
+import time
 import numpy as np
 
 # Define some colors.
@@ -8,12 +9,14 @@ BLACK = pygame.Color('black')
 WHITE = pygame.Color('white')
 
 # Define some constants
-max_wheel_speed = 40.0
-max_head_speed = 10.0
-max_lift_speed = 10.0
+max_wheel_speed = 150.0
+max_head_speed = 3.0
+max_lift_speed = 5.0
 wheel_deadband = 0.1
-head_deadband = 0.1
-lift_deadband = 0.1
+head_deadband = 0.05
+lift_deadband = 0.05
+
+cozmo_image = np.zeros((240,320,3), np.uint8)
 
 # This is a simple class that will help us print to the screen.
 # It has nothing to do with the joysticks, just outputting the
@@ -48,47 +51,24 @@ def translate_speed(fwd, turn):
     elif turn == 0.0:
         return fwd*max_wheel_speed, fwd*max_wheel_speed
     else:
-        return fwd*turn*max_wheel_speed, -fwd*turn*max_wheel_speed
-    # if -wheel_deadband < speed_tuple[1] < wheel_deadband:
-    #     if -wheel_deadband < speed_tuple[0] < wheel_deadband:
-    #         lwheel = rwheel = 0.0
-    #     else:
-    #         lwheel = rwheel = speed_tuple[0]*max_wheel_speed
-    # else:
-    #     if -wheel_deadband < speed_tuple[0] < wheel_deadband:
-    #         lwheel = speed_tuple[1]*max_wheel_speed
-    #         rwheel = -speed_tuple[1]*max_wheel_speed
-    #     else:
-    #         lwheel = speed_tuple[0]*speed_tuple[1]*max_wheel_speed
-    #         rwheel = -speed_tuple[0]*speed_tuple[1]*max_wheel_speed
-    # return lwheel,rwheel
+        avg_speed = fwd*max_wheel_speed
+        turn_speed = turn*max_wheel_speed/2
+        return avg_speed + turn_speed, avg_speed - turn_speed
+
 
 def on_camera_image(cli, new_im):
     """ Handle new images, coming from the robot. """
     del cli
-    cozmo_image = get_pygame_image(new_im)
-
-
-def get_pygame_image(cv2Image):
-    #cv2Image = self.last_im.copy()
-    if cv2Image.dtype.name == 'uint16':
-        cv2Image = (cv2Image / 256).astype('uint8')
-    size = cv2Image.shape[1::-1]
-    if len(cv2Image.shape) == 2:
-        cv2Image = np.repeat(cv2Image.reshape(size[1], size[0], 1), 3, axis = 2)
-        format = 'RGB'
-    else:
-        format = 'RGBA' if cv2Image.shape[2] == 4 else 'RGB'
-        cv2Image[:, :, [0, 2]] = cv2Image[:, :, [2, 0]]
-    surface = pygame.image.frombuffer(cv2Image.flatten(), size, format)
-    return surface.convert_alpha() if format == 'RGBA' else surface.convert()
+    global cozmo_image
+    cozmo_image = np.array(new_im)
 
 
 def main(run_cozmo = True):
+    global cozmo_image
     pygame.init()
     # Set the width and height of the screen (width, height).
     screen = pygame.display.set_mode((320, 240))
-    cozmo_image = get_pygame_image(np.zeros((240,320,3), np.uint8))
+    
     pygame.display.set_caption("Cozmo Drive")
     # Loop until the user clicks the close button.
     done = False
@@ -115,6 +95,7 @@ def main(run_cozmo = True):
             cli.load_anims()
             cli.set_lift_height(0)
             cli.set_head_angle(0)
+            time.sleep(2.0)
             cli.add_handler(pycozmo.event.EvtNewRawCameraImage, on_camera_image)
         forward_speed = 0.0
         turn_speed = 0.0
@@ -127,9 +108,8 @@ def main(run_cozmo = True):
         while not done:
             screen.fill(WHITE)
             textPrint.reset()
-            screen.blit(cozmo_image, (0, 0)) 
-            textPrint.tprint(screen,"Num joysticks is {}".format(pygame.joystick.get_count()))
-            
+            pygame.surfarray.blit_array(screen,np.rot90(cozmo_image)) 
+                       
             # Blah blah, initialize joysticks
             for i in range(pygame.joystick.get_count()):
                 joystick = pygame.joystick.Joystick(i)
@@ -140,36 +120,38 @@ def main(run_cozmo = True):
                 if event.type == pygame.QUIT: # If user clicked close.
                     done = True # Flag that we are done so we exit this loop.
                 elif event.type == pygame.JOYBUTTONDOWN:
-                    textPrint.tprint(screen, "Joystick button {} pressed.".format(event.button))
+                    #textPrint.tprint(screen, "Joystick button {} pressed.".format(event.button))
                     if event.button < 4:
                         expression = event.button
                     elif event.button == 4 or event.button == 5:
                         make_sound = True
-                elif event.type == pygame.JOYBUTTONUP:
-                    textPrint.tprint(screen, "Joystick button {} released.".format(event.button))
+                    elif event.button == 7:
+                        done = True
+                #elif event.type == pygame.JOYBUTTONUP:
+                    #textPrint.tprint(screen, "Joystick button {} released.".format(event.button))
                 elif event.type == pygame.JOYAXISMOTION:
                     #event.axis, event.value, joystick
-                    textPrint.tprint(screen, "Axis {} value: {:>6.3f}".format(event.axis, event.value))
-                    if event.axis == 0:
+                    #textPrint.tprint(screen, "Axis {} value: {:>6.3f}".format(event.axis, event.value))
+                    if event.axis == 1:
                         if -wheel_deadband < event.value < wheel_deadband:
                             forward_speed = 0.0
                         else:
-                            forward_speed = event.value
-                    elif event.axis == 1:
+                            forward_speed = -event.value
+                    elif event.axis == 0:
                         if -wheel_deadband < event.value < wheel_deadband:
                             turn_speed = 0.0
                         else:
-                            turn_speed = event.value
-                    elif event.axis == 2:
+                            turn_speed = -event.value
+                    elif event.axis == 3:
                         if -head_deadband < event.value < head_deadband:
                             head_speed = 0.0
                         else:
-                            head_speed = event.value * max_head_speed
-                    elif event.axis == 3:
+                            head_speed = -event.value * max_head_speed
+                    elif event.axis == 2:
                         if -lift_deadband < event.value < lift_deadband:
                             lift_speed = 0.0
                         else:
-                            lift_speed = event.value * max_lift_speed
+                            lift_speed = -event.value * max_lift_speed
 
 
             if(run_cozmo):
@@ -196,8 +178,8 @@ def main(run_cozmo = True):
                     #cli.play_audio("boopboop.wav")
                 # Translate x-y speed to left wheel, right wheel speed
                 #lwheel, rwheel = translate_speed(cozmo_speed)
-                cli.drive_wheels(translate_speed(forward_speed,turn_speed))
-
+                lwheel,rwheel = translate_speed(forward_speed,turn_speed)
+                cli.drive_wheels(float(lwheel), float(rwheel))
 
             pygame.display.update()
             # Limit to 20 frames per second.
@@ -213,17 +195,17 @@ def main(run_cozmo = True):
 
 if __name__ == "__main__":
     import sys
-    cozmo_image = None
+    #cozmo_image = None
     # run_event_loop(print_add, print_remove, key_received)
 
     # Get what to test
     if len(sys.argv) >= 2:
         command = str(sys.argv[1])
     else:
-        main()
+        command = ""
         #command = str(sys.argv[1])
     
-    if command != "nocozmo":
+    if command != "nocozmo" and command != "":
         command = "-h"
 
     if command == "-h":
@@ -240,5 +222,7 @@ if __name__ == "__main__":
     elif command == "nocozmo":
         #Run as main program
         main(False)
+    else:
+        main()
         
         
