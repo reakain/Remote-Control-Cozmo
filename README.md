@@ -58,7 +58,7 @@ These are the mappings as tested with a PS3 controller
     - *X:* Happy
     - *Circle:* Angry
     - *Square:* Sad
-    - *Triangle:* Random
+    - *Triangle:* Random Face
  - *Left/RightBumpers:* Play sound
 
 
@@ -77,8 +77,8 @@ The code was tested on Windows 10 Pro using git bash running git for windows. A 
 ### Todo
 These functions all currently have placeholder logic in the code, but still require the pycozmo client call integration
 
- - Cozmo expressions to the Cozmo display
  - Cozmo audio out
+ - Fix the expressions to run concurrently with drive commands
 
 
 ## References

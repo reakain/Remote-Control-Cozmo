@@ -3,6 +3,8 @@ import pycozmo
 import pygame
 import time
 import numpy as np
+from PIL import Image
+import random
 
 # Define some colors.
 BLACK = pygame.Color('black')
@@ -18,6 +20,42 @@ lift_deadband = 0.05
 
 # Initialize our cozmo image
 cozmo_image = np.zeros((240,320,3), np.uint8)
+
+expression_list = {'happy':['anim_greeting_happy_01','anim_codelab_happy_static','anim_greeting_happy_02', 'anim_greeting_happy_03'], 
+                'angry':['anim_codelab_scarycozmo_01'], 
+                'sad':['anim_majorfail']}
+expressions = [
+    pycozmo.expressions.Anger(),
+    pycozmo.expressions.Sadness(),
+    pycozmo.expressions.Happiness(),
+    pycozmo.expressions.Surprise(),
+    pycozmo.expressions.Disgust(),
+    pycozmo.expressions.Fear(),
+    pycozmo.expressions.Pleading(),
+    pycozmo.expressions.Vulnerability(),
+    pycozmo.expressions.Despair(),
+    pycozmo.expressions.Guilt(),
+    pycozmo.expressions.Disappointment(),
+    pycozmo.expressions.Embarrassment(),
+    pycozmo.expressions.Horror(),
+    pycozmo.expressions.Skepticism(),
+    pycozmo.expressions.Annoyance(),
+    pycozmo.expressions.Fury(),
+    pycozmo.expressions.Suspicion(),
+    pycozmo.expressions.Rejection(),
+    pycozmo.expressions.Boredom(),
+    pycozmo.expressions.Tiredness(),
+    pycozmo.expressions.Asleep(),
+    pycozmo.expressions.Confusion(),
+    pycozmo.expressions.Amazement(),
+    pycozmo.expressions.Excitement(),
+]
+
+# Base face expression.
+base_face = pycozmo.expressions.Neutral()
+
+rate = pycozmo.robot.FRAME_RATE
+timer = pycozmo.util.FPSTimer(rate)
 
 # This is a simple class that will help us print to the screen.
 # It has nothing to do with the joysticks, just outputting the
@@ -187,19 +225,51 @@ def main(run_cozmo = True, use_debug = False):
                 cli.move_head(head_speed)
                 # Move arm
                 cli.move_lift(lift_speed)
-                # Run expression
-                if expression == 0:
-                    # TODO: client call to display happy face
-                    expression = -1     # This resets so we don't keep restarting the expression every call
-                elif expression == 1:
-                    # TODO: client call to display angry face
-                    expression = -1     # This resets so we don't keep restarting the expression every call
-                elif expression == 2:
-                    # TODO: client call to display sad face
-                    expression = -1     # This resets so we don't keep restarting the expression every call
-                elif expression == 3:
-                    # TODO: client call to display random face
-                    expression = -1     # This resets so we don't keep restarting the expression every call
+                # If an expression button was pressed, start an expression
+                # TODO: Currently pressing an expression pauses all other operations, it should get wrappered properly to update with everything else
+                if expression != -1:
+                    cli.enable_procedural_face(False)   # So the idle doesn't interrupt
+                    # Run expression
+                    if expression == 0:
+                        option = pycozmo.expressions.Happiness()
+                        expression = -1     # This resets so we don't keep restarting the expression every call
+                    elif expression == 1:
+                        option = pycozmo.expressions.Anger()
+                        expression = -1     # This resets so we don't keep restarting the expression every call
+                    elif expression == 2:
+                        option = pycozmo.expressions.Sadness()
+                        expression = -1     # This resets so we don't keep restarting the expression every call
+                    elif expression == 3:
+                        option = random.choice(expressions)
+                        expression = -1     # This resets so we don't keep restarting the expression every call
+                    # Transition from base face to expression and back.
+                    for from_face, to_face in ((base_face, option), (option, base_face)):
+
+                        if to_face != base_face:
+                            print(to_face.__class__.__name__, flush=True)
+
+                        # Generate transition frames.
+                        face_generator = pycozmo.procedural_face.interpolate(from_face, to_face, rate // 3)
+                        for face in face_generator:
+
+                            # Render face image.
+                            im = face.render()
+
+                            # The Cozmo protocol expects a 128x32 image, so take only the even lines.
+                            np_im = np.array(im)
+                            np_im2 = np_im[::2]
+                            im2 = Image.fromarray(np_im2)
+
+                            # Display face image.
+                            cli.display_image(im2)
+
+                            # Maintain frame rate.
+                            timer.sleep()
+
+                        # Pause for 1s.
+                        for i in range(rate):
+                            timer.sleep()
+                    cli.enable_procedural_face(True) # turn the idle back on
                 # Make sound
                 if make_sound:
                     # TODO: client call to play the sound.
