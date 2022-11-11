@@ -207,7 +207,7 @@ def main(run_cozmo = True, use_debug = False):
                         if -wheel_deadband < event.value < wheel_deadband:
                             turn_speed = 0.0
                         else:
-                            turn_speed = -event.value
+                            turn_speed = event.value
                     elif event.axis == 3:
                         if -head_deadband < event.value < head_deadband:
                             head_speed = 0.0
